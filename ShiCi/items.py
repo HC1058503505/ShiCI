@@ -19,6 +19,8 @@ class ShiciItem(scrapy.Item):
     poem_author = scrapy.Field()
     # 诗的内容
     poem_content = scrapy.Field()
+    # 赞
+    poem_praise_count = scrapy.Field()
     # 诗的译文
     poem_translation = scrapy.Field()
     # 诗的注释
