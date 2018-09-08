@@ -73,8 +73,8 @@ class PoemSpider(scrapy.Spider):
 
 		# 诗的译文,注释
 		# https://so.gushiwen.org/shiwen2017/ajaxshangxi.aspx?id=2917
-		for index in xrange(1,len(all_sons)):
-			for child in all_sons[index].descendants:
+		for index in xrange(1,len(div_all_sons)):
+			for child in div_all_sons[index].descendants:
 				if child.name == 'h2':
 					print child
 		print '***************'
