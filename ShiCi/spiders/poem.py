@@ -46,8 +46,8 @@ class PoemSpider(scrapy.Spider):
 		poem_BS = BeautifulSoup(poem_html,'lxml')
 
 		# 获取所有的内容板块，删除后三个猜你喜欢
-		all_sons = poem_BS.find_all('div', class_='sons')[:-3]
-		poem_BS_basecontent= all_sons[0]
+		div_all_sons = poem_BS.find_all('div', class_='sons')[:-3]
+		poem_BS_basecontent= div_all_sons[0]
 
 		# 诗的题目
 		poem_title = poem_BS_basecontent.find('h1').contents[0]
