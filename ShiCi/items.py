@@ -10,7 +10,6 @@ import scrapy
 
 class ShiciItem(scrapy.Item):
     # define the fields for your item here like:
-    # name = scrapy.Field()
     # 诗的题目
     poem_title = scrapy.Field()
     # 诗所在朝代时期
@@ -21,13 +20,11 @@ class ShiciItem(scrapy.Item):
     poem_content = scrapy.Field()
     # 赞
     poem_praise_count = scrapy.Field()
-    # 诗的译文
-    poem_translation = scrapy.Field()
-    # 诗的注释
-    poem_annotation = scrapy.Field()
-    # 诗的赏析
-    poem_appreciate_analyze = scrapy.Field()
-    # 诗的参考资料
-    poem_appreciate_analyze_reference = scrapy.Field()
-    poem_translation_annotation_reference = scrapy.Field()
+
+    # 诗的注释翻译，背景故事，参考资料
+    poem_extension = scrapy.Field()
+
+
+
+
 

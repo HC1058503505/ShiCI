@@ -1,6 +1,8 @@
+
 # -*- coding:utf-8 -*-
 
 import re
+import requests
 import scrapy
 from bs4 import BeautifulSoup
 from scrapy.selector import Selector
@@ -41,8 +43,9 @@ class PoemSpider(scrapy.Spider):
 
 	# 解析诗词详情页内容
 	def poemDetail(self, response):
-		
-		poem_html = response.text.replace('<br/>','/n').replace('<strong>','').replace('</strong>','')
+		poem_item = ShiciItem()
+
+		poem_html = response.text.replace('<br />','/n').replace('<strong>','').replace('</strong>','')
 		poem_BS = BeautifulSoup(poem_html,'lxml')
 
 		# 获取所有的内容板块，删除后三个猜你喜欢
@@ -51,57 +54,95 @@ class PoemSpider(scrapy.Spider):
 
 		# 诗的题目
 		poem_title = poem_BS_basecontent.find('h1').contents[0]
-		print poem_title
+		poem_item['poem_title'] = poem_title
 		
 		# 诗所在朝代时期,作者
-		poem_dynasty_author = poem_BS_basecontent.find('p', class_ = 'source').find_all('a')
-		for i in poem_dynasty_author:
-			print i.contents[0]
+		poem_dynasty_author = poem_BS_basecontent.find('p', class_ = 'source').get_text().split(u'：')
+		poem_item['poem_dynasty'] = poem_dynasty_author[0]
+		poem_item['poem_author'] = poem_dynasty_author[-1]
 
 		# 诗的内容
 		poem_content_BS = poem_BS_basecontent.find('div',class_ = 'contson')
-		# self.poemContentReduce(poem_content_BS)
-		temp_poem_str = ''
-		for i in poem_content_BS.descendants:
-			if i.string != None:
-				temp_poem_str = temp_poem_str + i.string
-		
-		print temp_poem_str	
+		poem_content = poem_content_BS.get_text('/n',strip=True)
+		poem_content = '  ' + poem_content
+		poem_content = poem_content.replace('/n', '/n  ')
+		poem_item['poem_content'] = poem_content
 
 		# 赞
-		print list(poem_BS_basecontent.find('div',class_='good').descendants)[-1].strip()
+		poem_praise_count = list(poem_BS_basecontent.find('div',class_='good').descendants)[-1].strip()
+		poem_item['poem_praise_count'] = poem_praise_count
 
+		poem_extension = []
 		# 诗的译文,注释
 		# https://so.gushiwen.org/shiwen2017/ajaxshangxi.aspx?id=2917
 		for index in xrange(1,len(div_all_sons)):
-			for child in div_all_sons[index].descendants:
-				if child.name == 'h2':
-					print child
-		print '***************'
+			son = div_all_sons[index]
+			if len(son.get_text().strip()) == 0:
+				continue
+
+			son_extension_p = None
+			extension_bs = son
+			if son.attrs.has_key('id'):
+				son_id = son['id']
+				
+				son_identifier = re.findall('\d+',son_id)[0]
+				son_type = ''.join(re.findall('[a-zA-Z]',son_id))
+				ajax_url ='https://so.gushiwen.org/shiwen2017/ajax' + son_type + '.aspx?id=' + son_identifier
+				extension_ajax = requests.get(ajax_url)
+				extension_ajax_text = extension_ajax.text.replace('<br />', '/n')
+				extension_bs = BeautifulSoup(extension_ajax_text,'lxml')
+
+			
+			extension_bs_h2 = extension_bs.find('h2')
+			# h2
+			extension_title = extension_bs_h2.get_text()
+			dingpai_div = extension_bs.find('div', class_='dingpai')
+			# dingpai
+			dingpai_text = dingpai_div.get_text('|',strip=True).split('|')
+			extension_good = re.findall('\d+',dingpai_text[0])[0]
+			extension_bad = re.findall('\d+',dingpai_text[1])[0]
+
+			cankao_div = extension_bs.find('div', class_='cankao')
+			# cankao
+			cankao_text = cankao_div.get_text('|',strip=True)
+
+			cankao_div.decompose()
+			son_extension_p = extension_bs.find_all('p')
+
+			# extension content
+			extension_bs_p_str = ''
+			for p in son_extension_p:
+				extension_bs_p_str = extension_bs_p_str + p.get_text(strip=True) + '/n'
 
 
-		# children = poem_content_BS.children
-		# if children == None:
-		# 	print poem_content_BS.contents[0]
-		# else: 
-		# 	for i in poem_content_BS.children:
-		# 		print i
+			temp_extension = {
+				'extension_title' : extension_title,
+				'extension_good' : extension_good,
+				'extension_bad' : extension_bad,
+				'extension_cankao' : cankao_text,
+				'extension_content' : extension_bs_p_str
+			} 
+
+			poem_extension.append(temp_extension)
 
 
-		# # 诗的题目
-  #   	poem_title = scrapy.Field()
-  #   	# 诗所在朝代时期
-  #   	poem_dynasty = scrapy.Field()
-  #   	# 诗的作者
-  #   	poem_author = scrapy.Field()
-  #   	# 诗的内容
-  #   	poem_content = scrapy.Field()
-  #   	# 诗的译文
-  #   	poem_translation = scrapy.Field()
-  #   	# 诗的注释
-  #   	poem_annotation = scrapy.Field()
-  #   	# 诗的赏析
-  #   	poem_appreciate_analyze = scrapy.Field()
-  #   	# 诗的参考资料
-  #   	poem_appreciate_analyze_reference = scrapy.Field()
-  #   	poem_translation_annotation_reference = scrapy.Field()
+		poem_item['poem_extension'] = poem_extension
+
+		return  poem_item
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
