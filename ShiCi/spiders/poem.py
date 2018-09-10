@@ -20,7 +20,7 @@ class PoemSpider(scrapy.Spider):
 
 	# 开始爬取，获取诗词详情页url
 	def start_requests(self):
-		for i in xrange(1,2):
+		for i in xrange(1,1001):
 			url = self.bash_url + 'default_0A0A' + str(i) + self.bashurl
 			print url
 			yield Request(url, self.parse)
@@ -37,7 +37,9 @@ class PoemSpider(scrapy.Spider):
 		textarea = response.selector.xpath('//textarea/text()').extract()
 		urls = map(self.poemDetailURL, textarea)
 		for url in urls:
-			yield Request(url, self.poemDetail)
+			poem_id_aspx = url.split('_')[-1]
+			poem_id = poem_id_aspx.split('.')[0]
+			yield Request(url, self.poemDetail,meta={'poem_id': poem_id})
 		
 
 
@@ -49,9 +51,11 @@ class PoemSpider(scrapy.Spider):
 		poem_BS = BeautifulSoup(poem_html,'lxml')
 
 		# 获取所有的内容板块，删除后三个猜你喜欢
-		div_all_sons = poem_BS.find_all('div', class_='sons')[:-3]
+		div_all_sons = poem_BS.find_all('div', class_='sons')
 		poem_BS_basecontent= div_all_sons[0]
 
+		# poemid
+		poem_item['poem_id'] = response.meta['poem_id']
 		# 诗的题目
 		poem_title = poem_BS_basecontent.find('h1').contents[0]
 		poem_item['poem_title'] = poem_title
@@ -68,6 +72,13 @@ class PoemSpider(scrapy.Spider):
 		poem_content = poem_content.replace('/n', '/n  ')
 		poem_item['poem_content'] = poem_content
 
+		# 诗的标签
+		poem_tags_div = poem_BS_basecontent.find('div', class_ = 'tag')
+		if poem_tags_div == None:
+			poem_item['poem_tags'] = []
+		else:
+			poem_item['poem_tags'] = poem_tags_div.get_text('|',strip=True).split('|')
+		
 		# 赞
 		poem_praise_count = list(poem_BS_basecontent.find('div',class_='good').descendants)[-1].strip()
 		poem_item['poem_praise_count'] = poem_praise_count
@@ -77,11 +88,10 @@ class PoemSpider(scrapy.Spider):
 		# https://so.gushiwen.org/shiwen2017/ajaxshangxi.aspx?id=2917
 		for index in xrange(1,len(div_all_sons)):
 			son = div_all_sons[index]
-			if len(son.get_text().strip()) == 0:
+			extension_bs = son.find('div', class_='contyishang')
+			if extension_bs == None:
 				continue
-
-			son_extension_p = None
-			extension_bs = son
+				
 			if son.attrs.has_key('id'):
 				son_id = son['id']
 				
@@ -91,11 +101,15 @@ class PoemSpider(scrapy.Spider):
 				extension_ajax = requests.get(ajax_url)
 				extension_ajax_text = extension_ajax.text.replace('<br />', '/n')
 				extension_bs = BeautifulSoup(extension_ajax_text,'lxml')
-
+				# ajax 返回内容为None
+				if extension_bs.find('h2') == None:
+					continue
 			
 			extension_bs_h2 = extension_bs.find('h2')
+			
 			# h2
 			extension_title = extension_bs_h2.get_text()
+
 			dingpai_div = extension_bs.find('div', class_='dingpai')
 			# dingpai
 			dingpai_text = dingpai_div.get_text('|',strip=True).split('|')
@@ -104,7 +118,7 @@ class PoemSpider(scrapy.Spider):
 
 			cankao_div = extension_bs.find('div', class_='cankao')
 			# cankao
-			cankao_text = cankao_div.get_text('|',strip=True)
+			# cankao_text = cankao_div.get_text('',strip=True)
 
 			cankao_div.decompose()
 			son_extension_p = extension_bs.find_all('p')
@@ -119,7 +133,6 @@ class PoemSpider(scrapy.Spider):
 				'extension_title' : extension_title,
 				'extension_good' : extension_good,
 				'extension_bad' : extension_bad,
-				'extension_cankao' : cankao_text,
 				'extension_content' : extension_bs_p_str
 			} 
 
