@@ -56,3 +56,35 @@ class PoetItem(scrapy.Item):
         
 
 
+class SentenceItem(scrapy.Item):
+    
+    # 诗句类型
+    sentence_type = scrapy.Field()
+
+    # 诗句内容
+    sentence_content = scrapy.Field()
+
+    # 诗句id
+    sentence_id = scrapy.Field()
+
+    # 诗句所属诗名
+    sentence_poem_title = scrapy.Field()
+
+    # 诗句所属诗人
+    sentence_poem_author = scrapy.Field()
+
+    # 诗句所属诗id
+    sentence_poem_id = scrapy.Field()
+
+class BookItem(scrapy.Item):
+    
+    # 古籍大纲
+    book_outline = scrapy.Field()
+    # 古籍目录
+    book_catalogue = scrapy.Field()
+    # 古籍名
+    book_name = scrapy.Field()
+    # 古籍章节内容
+    book_contents = scrapy.Field()
+        
+        

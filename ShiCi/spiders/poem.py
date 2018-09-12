@@ -9,7 +9,7 @@ from scrapy.selector import Selector
 from scrapy.http import Request
 from ShiCi.items import ShiciItem
 import json
-
+import time
 class PoemSpider(scrapy.Spider):
 	"""docstring for PoemSpider"""
 	
@@ -88,10 +88,11 @@ class PoemSpider(scrapy.Spider):
 		# https://so.gushiwen.org/shiwen2017/ajaxshangxi.aspx?id=2917
 		for index in xrange(1,len(div_all_sons)):
 			son = div_all_sons[index]
-			extension_bs = son.find('div', class_='contyishang')
-			if extension_bs == None:
+			
+			if son.find('div', class_='contyishang') == None:
 				continue
-				
+			
+			extension_bs = son
 			if son.attrs.has_key('id'):
 				son_id = son['id']
 				
@@ -99,34 +100,47 @@ class PoemSpider(scrapy.Spider):
 				son_type = ''.join(re.findall('[a-zA-Z]',son_id))
 				ajax_url ='https://so.gushiwen.org/shiwen2017/ajax' + son_type + '.aspx?id=' + son_identifier
 				extension_ajax = requests.get(ajax_url)
+				time.sleep(1)
 				extension_ajax_text = extension_ajax.text.replace('<br />', '/n')
 				extension_bs = BeautifulSoup(extension_ajax_text,'lxml')
-				# ajax 返回内容为None
-				if extension_bs.find('h2') == None:
-					continue
-			
-			extension_bs_h2 = extension_bs.find('h2')
-			
-			# h2
-			extension_title = extension_bs_h2.get_text()
+				
+			extension_bs_contyishang = extension_bs.find('div','contyishang')
+			if extension_bs_contyishang == None:
+				continue
+			else:
+				# h2
+				extension_bs_h2 = extension_bs.find('h2')
+				extension_title = extension_bs_h2.get_text()
 
-			dingpai_div = extension_bs.find('div', class_='dingpai')
 			# dingpai
+			dingpai_div = extension_bs.find('div', class_='dingpai')
 			dingpai_text = dingpai_div.get_text('|',strip=True).split('|')
 			extension_good = re.findall('\d+',dingpai_text[0])[0]
 			extension_bad = re.findall('\d+',dingpai_text[1])[0]
 
-			cankao_div = extension_bs.find('div', class_='cankao')
+			# cankao_div = extension_bs.find('div', class_='cankao')
 			# cankao
 			# cankao_text = cankao_div.get_text('',strip=True)
 
-			cankao_div.decompose()
-			son_extension_p = extension_bs.find_all('p')
+			# cankao_div.decompose()
+			
+			extension_bs_contyishang = extension_bs.find('div',class_='contyishang')
+			if extension_bs_contyishang != None:
+				son_extension_p = extension_bs.find_all('p')
+				if son_extension_p == None or len(son_extension_p) == 0:
+					if extension_bs_h2 != None:
+						extension_bs_h2.decompose()
+						extension_bs_p_str = extension_bs_contyishang.get_text(strip=True)
+					else:
+						pass
+				else:
 
-			# extension content
-			extension_bs_p_str = ''
-			for p in son_extension_p:
-				extension_bs_p_str = extension_bs_p_str + p.get_text(strip=True) + '/n'
+					# extension content
+					extension_bs_p_str = ''
+					for p in son_extension_p:
+						extension_bs_p_str = extension_bs_p_str + p.get_text(strip=True) + '/n'
+			else:
+				pass
 
 
 			temp_extension = {

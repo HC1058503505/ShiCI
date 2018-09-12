@@ -9,6 +9,9 @@ from scrapy.selector import Selector
 from scrapy.http import Request
 from ShiCi.items import ShiciItem
 from ShiCi.items import PoetItem
+# from selenium import webdriver
+# from selenium.webdriver.chrome.options import Options
+import time
 import json
 
 class PoetSpider(scrapy.Spider):
@@ -16,6 +19,12 @@ class PoetSpider(scrapy.Spider):
 	name = 'poet'
 	allowed_domains = ['gushiwen.org']
 	bash_url = 'https://so.gushiwen.org/authors/'
+
+
+	# chrome_options = Options()
+	# chrome_options.add_argument('--headless')
+	# chrome_options.add_argument('--disable-gpu')
+	# browser = webdriver.Chrome(chrome_options=chrome_options)
 
 	def start_requests(self):
 		yield Request(self.bash_url,self.parse)
@@ -44,10 +53,9 @@ class PoetSpider(scrapy.Spider):
 		page_span = page_span_split_list[-1]
 		page = int(re.findall('\d+',page_span)[0])
 
+		dynasty = response.meta['poet_dynasty']
 		for page_num in xrange(1,page+1):
-			dynasty = response.meta['poet_dynasty']
 			url = 'https://so.gushiwen.org/authors/Default.aspx?p=' + str(page_num) + '&c=' + dynasty
-
 			yield Request(url,self.poet, meta={'poet_dynasty' : dynasty})
 
 	def poet(self, response):
@@ -95,9 +103,13 @@ class PoetSpider(scrapy.Spider):
 		poet_detail_sons = poet_detail_bs.find_all('div', class_ = 'sons')
 
 		for son in poet_detail_sons:
-			extension_bs = son.find('div',class_='contyishang')
-			if extension_bs == None:
+			# print 'son-----------------start'
+			# print son
+			# print 'son*****************end'
+			if son.find('div',class_='contyishang') == None:
 				continue
+
+			extension_bs = son
 
 			if son.attrs.has_key('id'):
 
@@ -106,19 +118,23 @@ class PoetSpider(scrapy.Spider):
 				son_type = ''.join(re.findall('[a-zA-Z]',son_id))
 
 				ajax_url = 'https://so.gushiwen.org/authors/ajaxziliao.aspx?id=' + son_identifier
-				extension_ajax = requests.get(ajax_url)
-				extension_ajax_text = extension_ajax.text.replace('<br />', '/n')
+				headers = {'user-agent' : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'}
+				extension_ajax_response = requests.get(ajax_url,headers=headers)
+				
+				# self.browser.get(ajax_url)
+				time.sleep(1)
+				# extension_ajax_response = self.browser.page_source
+				extension_ajax_text = extension_ajax_response.text.replace('<br />', '/n')
 				extension_bs = BeautifulSoup(extension_ajax_text,'lxml')
-				if extension_bs == None:
-					continue
-	
+
 			
-			extension_bs_h2 = extension_bs.find('h2')
+			extension_bs_contyishang = extension_bs.find('div','contyishang')
 			# ajax 返回内容为None
-			if extension_bs_h2 == None:
-				extension_title = ''
+			if extension_bs_contyishang == None:
+				continue
 			else:
 				# h2
+				extension_bs_h2 = extension_bs_contyishang.find('h2')
 				extension_title = extension_bs_h2.get_text()
 
 			dingpai_div = extension_bs.find('div', class_='dingpai')
@@ -130,18 +146,33 @@ class PoetSpider(scrapy.Spider):
 				dingpai_text = dingpai_div.get_text('|',strip=True).split('|')
 				extension_good = re.findall('\d+',dingpai_text[0])[0]
 				extension_bad = re.findall('\d+',dingpai_text[1])[0]
-
-			cankao_div = extension_bs.find('div', class_='cankao')
 			# cankao
-			# cankao_text = cankao_div.get_text('',strip=True)
-			if cankao_div != None:
-				cankao_div.decompose()
+			# cankao_div = extension_bs.find('div', class_='cankao')
+			
+			# if cankao_div != None:
+			# 	cankao_div.decompose()
 
-			son_extension_p = extension_bs.find_all('p')
 			# extension content
 			extension_bs_p_str = ''
-			for p in son_extension_p:
-				extension_bs_p_str = extension_bs_p_str + p.get_text(strip=True) + '/n'
+			if extension_bs_contyishang != None:
+				
+				son_extension_p = extension_bs_contyishang.find_all('p')
+
+				if son_extension_p == None or len(son_extension_p) == 0:
+					if extension_bs_h2 != None:
+						extension_bs_h2.decompose()
+						extension_bs_p_str = extension_bs_contyishang.get_text(strip=True)
+					else:
+						pass
+				else:
+					for p in son_extension_p:
+						if p != son_extension_p[-1]:
+							extension_bs_p_str = extension_bs_p_str + p.get_text(strip=True) + '/n'
+						else:
+							extension_bs_p_str = extension_bs_p_str + p.get_text(strip=True)
+			else:
+				pass
+
 
 			temp_extension = {
 				'extension_title' : extension_title,
@@ -150,12 +181,10 @@ class PoetSpider(scrapy.Spider):
 				'extension_content' : extension_bs_p_str
 			} 
 
-
 			poet_extension.append(temp_extension)
-
+				
 
 		poet_item['poet_extension'] = poet_extension
-
 
 		return poet_item
 
