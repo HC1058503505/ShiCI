@@ -76,8 +76,12 @@ class SentenceItem(scrapy.Item):
     # 诗句所属诗id
     sentence_poem_id = scrapy.Field()
 
+
 class BookItem(scrapy.Item):
-    
+    # 估计id
+    book_id = scrapy.Field()
+    # bookimg
+    book_img = scrapy.Field()
     # 古籍大纲
     book_outline = scrapy.Field()
     # 古籍目录
@@ -86,5 +90,7 @@ class BookItem(scrapy.Item):
     book_name = scrapy.Field()
     # 古籍章节内容
     book_contents = scrapy.Field()
+    # 古籍更改
+    book_abstract = scrapy.Field()
         
         
