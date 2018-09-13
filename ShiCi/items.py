@@ -82,10 +82,6 @@ class BookItem(scrapy.Item):
     book_id = scrapy.Field()
     # bookimg
     book_img = scrapy.Field()
-    # 古籍大纲
-    book_outline = scrapy.Field()
-    # 古籍目录
-    book_catalogue = scrapy.Field()
     # 古籍名
     book_name = scrapy.Field()
     # 古籍章节内容
@@ -93,4 +89,14 @@ class BookItem(scrapy.Item):
     # 古籍更改
     book_abstract = scrapy.Field()
         
-        
+class BookCatalogueItem(scrapy.Item):
+     
+     # 纲
+     book_category = scrapy.Field()
+
+     # 目
+     book_sub_category = scrapy.Field()
+
+     # book id
+     book_id = scrapy.Field()
+          
